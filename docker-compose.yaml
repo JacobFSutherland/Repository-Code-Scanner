@@ -1,0 +1,39 @@
+version: '1'
+services:
+
+  #Start SonarQube
+  sonarqube:
+    image: sonarqube:latest
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/system/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    container_name: Sonarqube
+    environment: 
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+      - SONAR_TOKEN=12345
+    ports: 
+      - '9000:9000'
+    networks:
+      - net1
+
+  # Start scraper after SonarQube is started so the client is not bugged & broken
+  pytorch:
+    depends_on:
+      sonarqube:
+        condition: service_healthy
+    image: scraper:latest
+    container_name: pytorch
+    environment:
+      - SONAR_HOST_URL=http://sonarqube:9000
+      - SONAR_SCANNER_OPTS=-Dsonar.projectKey=project:data
+      - KEY=project:data
+      - GIT_URL={{REPO}}
+      - QUARTERS={{QUARTERS_TO_RUN_FOR}}
+
+    networks:
+      - net1
+      
+networks:
+  net1:
